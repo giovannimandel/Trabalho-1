@@ -62,7 +62,7 @@ module rpg{
             attacker != receiver,
             attacker.team != receiver.team,
             attacker.hp > 0,
-            //receiver.hp > 0,
+            receiver.hp > 0,
             basicAttack(attacker, receiver)
         }
     }
@@ -75,11 +75,6 @@ module rpg{
         creatures' = creatures.setBy(receiver.name, c => c.unparalizing())     
     }
 
-    var x: int
-    action x_recebe_algum_valor = {
-        nondet valor = Set(1, 2, 3).oneOf()
-        x' = valor
-    }
 
     action init = all{
         round' = 0,
@@ -106,6 +101,6 @@ module rpg{
         }
     }
 
-    val inv = creatures.values().exists(c => c.hp != 0)
+    val inv = creatures.values().exists(c => c.hp > 0)
 
 }
