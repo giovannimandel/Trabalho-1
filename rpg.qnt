@@ -86,7 +86,7 @@ module rpg{
             "Boris" -> {name: "Boris", hp: 150, initiative: D20_barbarian, role: CharacterBarbarian, team: "Characters", Immune: false, Paralized: false, Taunt: false},
             "Billy" -> {name: "Billy", hp: 20, initiative: D20_cleric, role: CharacterCleric, team: "Characters", Immune: false, Paralized: false, Taunt: false},
             "Belle" ->{name: "Belle", hp: 20, initiative: D20_mage, role: CharacterMage, team: "Characters",Immune: false, Paralized: false, Taunt: false},
-            "Monster" -> {name: "Monstro", hp: 100, initiative: D20_monster, role: Monster, team: "Monsters", Immune: false, Paralized: false, Taunt: false}
+            "Monster" -> {name: "Monster", hp: 100, initiative: D20_monster, role: Monster, team: "Monsters", Immune: false, Paralized: false, Taunt: false}
         )
     }       
     
