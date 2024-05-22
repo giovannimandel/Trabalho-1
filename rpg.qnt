@@ -24,7 +24,7 @@ module rpg{
 
     var round: int
     var creatures: str -> Creature
-
+    var last_turn: Option[{ attacker: Creature, receiver: Creature, move: str}]
 
 
     pure def damage(c: Creature, d: int): Creature = {
@@ -55,7 +55,10 @@ module rpg{
         {...c, Immune: false}
     }
 
-    action basicAttack(attacker: Creature, receiver: Creature): bool = all{
+    action attack(attacker: Creature, receiver: Creature): bool = all{
+            attacker.hp > 0,
+            receiver.hp > 0,
+            last_turn' = Some({ attacker: attacker, receiver: receiver, move: "Attack"}),
             //if the attacker is taunted, attack the creature who taunted it
             if(attacker.Taunt != "None"){
                 //if the creature who taunted is immune, it doesnt receive damage and loses immune, and attacker is not taunted anymore
@@ -80,35 +83,31 @@ module rpg{
             //else just do the damage
             else{ 
                 creatures' = creatures.setBy(receiver.name, c => c.damage(10))
-            }
-        
+            }, 
     }
 
-    action attack(attacker: Creature, receiver: Creature): bool = {
-        all {
-            attacker.hp > 0,
-            receiver.hp > 0,
-            attacker.Paralized == false,
-            basicAttack(attacker, receiver)
-        }
-    }
     
     action paralize_action(caster: Creature, receiver: Creature): bool = all{
-        creatures' = creatures.setBy(receiver.name, c => c.paralize())
+        creatures' = creatures.setBy(receiver.name, c => c.paralize()),
+        last_turn' = Some({ attacker: caster, receiver: receiver, move: "Paralize"}), 
     }
     
     action removeParalize(caster: Creature, receiver: Creature): bool = all{
-        creatures' = creatures.setBy(receiver.name, c => c.unparalize())     
+        caster.name != receiver.name,
+        creatures' = creatures.setBy(receiver.name, c => c.unparalize()),   
+        last_turn' = Some({ attacker: caster, receiver: receiver, move: " Remove Paralize" }),      
     }
 
     action taunt_action(caster:Creature, receiver: Creature): bool = all{
         caster.team != receiver.team,
-        creatures'= creatures.setBy(receiver.name, c => c.taunt(caster))
+        creatures'= creatures.setBy(receiver.name, c => c.taunt(caster)),
+        last_turn' = Some({ attacker: caster, receiver: receiver, move: "Taunt" }), 
     }
 
     action immune_action(caster:Creature, receiver: Creature): bool = all{
         caster.team == receiver.team,
-        creatures' = creatures.transformValues(c => c.immune())
+        creatures' = creatures.transformValues(c => c.immune()),
+        last_turn' = Some({ attacker: caster, receiver: receiver, move: "Immune" }), 
     }
 
 
@@ -123,7 +122,9 @@ module rpg{
             "Billy" -> {name: "Billy", hp: 20, initiative: D20_cleric, role: CharacterCleric, team: "Characters", Immune: false, Paralized: false, Taunt: "None"},
             "Belle" -> {name: "Belle", hp: 20, initiative: D20_mage, role: CharacterMage, team: "Characters",Immune: false, Paralized: false, Taunt: "None"},
             "Monster" -> {name: "Monster", hp: 100, initiative: D20_monster, role: Monster, team: "Monsters", Immune: false, Paralized: false, Taunt: "None"}
-        )
+        ),
+        last_turn' = None
+
     }       
     
     
@@ -138,7 +139,6 @@ module rpg{
                     attack(attacker, receiver),
                     paralize_action(attacker, receiver),
                     removeParalize(attacker, receiver_allie)
-      
                 }
             }else if(attacker.role == CharacterBarbarian and attacker.Paralized == false){
                 any{
@@ -161,7 +161,6 @@ module rpg{
                 } else
                     any{
                         attack(attacker, receiver),
-                        paralize_action(attacker, receiver)
                     }
             } else{
                 attack(attacker, receiver)
@@ -171,10 +170,11 @@ module rpg{
     }
 
     //invariants
-    val monster_doesnt_die = creatures.values().exists(c => c.role == Monster and c.hp >= 0)
+    val monster_doesnt_die = creatures.values().filter(c => c.team == "Monsters").forall(c => c.hp > 0)
 
+    val characters_doesnt_die = creatures.values().filter(c=> c.team == "Characters").forall(c => c.hp > 0)
 
-    val characters_doesnt_die = creatures.values().exists(c => c.hp > 0 and c.team == "Characters")
+    val no_one_dies = creatures.values().forall(c => c.hp > 0 )
 
 
 }
