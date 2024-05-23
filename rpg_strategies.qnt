@@ -1,4 +1,4 @@
-module rpg{
+module rpg_strategies{
     import basicSpells.* from "/spells/basicSpells"
     import rareSpells.* from "/spells/rareSpells"
 
@@ -81,7 +81,7 @@ module rpg{
                     creatures' = creatures.setBy(receiver.name, c => c.damage(20))
                 } 
             } 
-            //else just do the damage
+            //else just do the damage 
             else {
                 creatures' = creatures.setBy(receiver.name, c => c.damage(10))
             }
@@ -94,11 +94,11 @@ module rpg{
     }
     
     action removeParalize(caster: Creature, receiver: Creature): bool = all{
-        caster.name != receiver.name,
-        
-        creatures' = creatures.setBy(receiver.name, c => c.unparalize()),   
-        last_turn' = Some({ attacker: caster, receiver: receiver, move: "Remove Paralize" }),
-             
+            caster.name != receiver.name,
+
+            creatures' = creatures.setBy(receiver.name, c => c.unparalize()),   
+            last_turn' = Some({ attacker: caster, receiver: receiver, move: "Remove Paralize" }),
+     
     }
 
     action taunt_action(caster:Creature, receiver: Creature): bool = all{
@@ -111,6 +111,10 @@ module rpg{
         caster.team == receiver.team,
         creatures' = creatures.transformValues(c => c.immune()),
         last_turn' = Some({ attacker: caster, receiver: receiver, move: "Immune" }), 
+    }
+
+    action remove_immune(caster: Creature): bool = all{
+        creatures' = creatures.transformValues(c => c.deimmune()),
     }
 
 
@@ -130,7 +134,11 @@ module rpg{
 
     }       
     
-    
+    val isParalized = creatures.values().exists(c => c.Paralized == true and c.team == "Characters")
+    val monsterParalized = creatures.values().exists(c => c.Paralized== true and c.team == "Monster")
+    val monsterNotTaunted = creatures.values().exists(c => c.Taunt == "None" and c.team == "Monsters")
+    val charactersNotImmune = creatures.values().filter(c => c.team == "Characters").exists(c => c.Immune != true )
+
     action step = {
         val attackers_by_initiative = creatures.values().toList((c1, c2) => intCompare(c2.initiative, c1.initiative))
         val attacker = attackers_by_initiative[round % creatures.keys().size()]
@@ -138,23 +146,26 @@ module rpg{
         nondet receiver_allie = creatures.values().filter(c => c.team == attacker.team).oneOf()
         all {
             if(attacker.role == CharacterMage and attacker.Paralized == false){  
-                any{
-                    attack(attacker, receiver),
-                    paralize_action(attacker, receiver),
-                    removeParalize(attacker, receiver_allie)
+                all{
+                    if (isParalized) removeParalize(attacker, receiver_allie) else 
+                    if (monsterParalized) attack(attacker, receiver)
+                    else paralize_action(attacker, receiver),
                 }
             }else if(attacker.role == CharacterBarbarian and attacker.Paralized == false){
-                any{
-                    attack(attacker, receiver),
-                    taunt_action(attacker, receiver),
-                    removeParalize(attacker, receiver_allie),
+                all{
+                    
+                    if (monsterNotTaunted) taunt_action(attacker, receiver)
+                    else if (isParalized) removeParalize(attacker, receiver_allie)
+                    else attack(attacker, receiver)
                 }
             } else if(attacker.role == CharacterCleric and attacker.Paralized == false){
-                    any{
-                        attack(attacker, receiver),
-                        immune_action(attacker, receiver_allie),
-                        removeParalize(attacker, receiver_allie),
-                    }    
+                all{
+                    
+                    if (charactersNotImmune) immune_action(attacker, receiver_allie)
+                    else if (isParalized) removeParalize(attacker, receiver_allie)
+                    else attack(attacker, receiver) 
+                   
+                }
             } else if(attacker.role == Monster){
                 //if the monster is paralized, it uses the turn to unparalize itself
                 if(attacker.Paralized == true){
@@ -181,5 +192,6 @@ module rpg{
     val no_one_dies = creatures.values().forall(c => c.hp > 0 )
 
     val immune_test = creatures.values().forall(c => c.Immune == false)
+
 
 }
