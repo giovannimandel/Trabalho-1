@@ -59,8 +59,12 @@ module rpg{
             attacker.hp > 0,
             receiver.hp > 0,
             last_turn' = Some({ attacker: attacker, receiver: receiver, move: "Attack"}),
+            //if attacker is cleric, remove immunity and do the attack
+            if(attacker.role == CharacterCleric)all{
+                creatures' = creatures.transformValues(c => c.deimmune()).setBy(receiver.name, c => c.damage(10))
+            }
             //if the attacker is taunted, attack the creature who taunted it
-            if(attacker.Taunt != "None"){
+            else if(attacker.Taunt != "None"){
                 //if the creature who taunted is immune, it doesnt receive damage and loses immune, and attacker is not taunted anymore
                 if(receiver.Immune == true)
                     creatures' = creatures.setBy(receiver.name, c => c.damage(0)).setBy(receiver.name, c => c.deimmune()).setBy(attacker.name, c => c.detaunt())
@@ -95,9 +99,13 @@ module rpg{
     
     action removeParalize(caster: Creature, receiver: Creature): bool = all{
         caster.name != receiver.name,
-        
+        if(caster.role == CharacterCleric) all{
+            creatures' = creatures.transformValues(c => c.deimmune()).setBy(receiver.name, c => c.unparalize()),
+            last_turn' = Some({ attacker: caster, receiver: receiver, move: "Remove Paralize" })
+        }else all{
         creatures' = creatures.setBy(receiver.name, c => c.unparalize()),   
         last_turn' = Some({ attacker: caster, receiver: receiver, move: "Remove Paralize" }),
+        }
              
     }
 
@@ -118,7 +126,7 @@ module rpg{
         round' = 0,
         nondet D20_mage = (1.to(20)).oneOf()
         nondet D20_barbarian = (1.to(20)).oneOf()
-        val D20_cleric = 21
+        nondet D20_cleric = (1.to(20)).oneOf()
         nondet D20_monster = (1.to(20)).oneOf()
         creatures' = Map(
             "Boris" -> {name: "Boris", hp: 150, initiative: D20_barbarian, role: CharacterBarbarian, team: "Characters", Immune: false, Paralized: false, Taunt: "None"},

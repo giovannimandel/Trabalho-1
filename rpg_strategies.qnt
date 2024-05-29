@@ -59,8 +59,12 @@ module rpg_strategies{
             attacker.hp > 0,
             receiver.hp > 0,
             last_turn' = Some({ attacker: attacker, receiver: receiver, move: "Attack"}),
+            //if attacker is cleric, remove immunity and then attack
+            if(attacker.role == CharacterCleric)all{
+                creatures' = creatures.transformValues(c => c.deimmune()).setBy(receiver.name, c => c.damage(10))
+            }
             //if the attacker is taunted, attack the creature who taunted it
-            if(attacker.Taunt != "None"){
+            else if(attacker.Taunt != "None"){
                 //if the creature who taunted is immune, it doesnt receive damage and loses immune, and attacker is not taunted anymore
                 if(receiver.Immune == true)
                     creatures' = creatures.setBy(receiver.name, c => c.damage(0)).setBy(receiver.name, c => c.deimmune()).setBy(attacker.name, c => c.detaunt())
@@ -81,7 +85,7 @@ module rpg_strategies{
                     creatures' = creatures.setBy(receiver.name, c => c.damage(20))
                 } 
             } 
-            //else just do the damage 
+            //else just do the damage
             else {
                 creatures' = creatures.setBy(receiver.name, c => c.damage(10))
             }
@@ -94,11 +98,15 @@ module rpg_strategies{
     }
     
     action removeParalize(caster: Creature, receiver: Creature): bool = all{
-            caster.name != receiver.name,
-
-            creatures' = creatures.setBy(receiver.name, c => c.unparalize()),   
-            last_turn' = Some({ attacker: caster, receiver: receiver, move: "Remove Paralize" }),
-     
+        caster.name != receiver.name,
+        if(caster.role == CharacterCleric) all{
+            creatures' = creatures.transformValues(c => c.deimmune()).setBy(receiver.name, c => c.unparalize()),
+            last_turn' = Some({ attacker: caster, receiver: receiver, move: "Remove Paralize" })
+        }else all{
+        creatures' = creatures.setBy(receiver.name, c => c.unparalize()),   
+        last_turn' = Some({ attacker: caster, receiver: receiver, move: "Remove Paralize" }),
+        }
+             
     }
 
     action taunt_action(caster:Creature, receiver: Creature): bool = all{
